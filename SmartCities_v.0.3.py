@@ -1,48 +1,45 @@
 import machine as pi
 import utime as time
 from lcd1602 import LCD1602
-from dht11 import *
+from dht11 import DHT
 
 
-# Define pin assignments and constants
-LED = pi.Pin(16, pi.Pin.OUT)  # LED pin
-B1 = pi.Pin(18, pi.Pin.IN)  # Button pin
-POT = pi.ADC(0)  # Potentiometer pin
-PWM1 = pi.PWM(pi.Pin(27))  # PWM pin for buzzer
-I2C = pi.I2C(1, scl = pi.Pin(7), sda = pi.Pin(6), freq = 400000)
+# Définition des broches et constantes
+LED = pi.Pin(16, pi.Pin.OUT)  # Broche LED
+B1 = pi.Pin(18, pi.Pin.IN)  # Broche bouton
+POT = pi.ADC(0)  # Broche potentiomètre
+PWM1 = pi.PWM(pi.Pin(27))  # Broche PWM pour le buzzer
+I2C = pi.I2C(1, scl=pi.Pin(7), sda=pi.Pin(6), freq=400000)
 lcd = LCD1602(I2C, 2, 16)
 dht = DHT(20)
 
+# Affichage initial sur l'écran LCD
 lcd.display()
-
 time.sleep(0.5)
-
 lcd.print("Hello")
-
 time.sleep(1)
 
-FREQ_LED = [0, 2, 5, 10]  # Frequency values for LED control
+# Fréquences pour le contrôle de la LED
+FREQ_LED = [0, 2, 5, 10]
 
 PAUSED = [0]
 
-NIRVANA_COME_AS_YOU_ARE = [120,
-    82, 0, 82, 0, 87, 0, 92, 0, 110, 0, 92, 0, 110, 0, 92,
-    0, 92, 0, 87, 0, 82, 0, 123, 0, 82, 0, 82, 0, 123, 0, 82,
-    0, 87, 0, 92, 0, 110, 0, 92, 0, 110, 0, 92, 0, 92, 0, 87,
-    0, 82, 0, 123, 0, 82, 0, 82, 0, 123
-    ]
+# Mélodies définies sous forme de listes de notes
+NIRVANA_COME_AS_YOU_ARE = [
+    120, 82, 0, 82, 0, 87, 0, 92, 0, 110, 0, 92, 0, 110, 0, 92, 0, 92, 0, 87, 0, 82, 0, 123, 0, 82, 0,
+    82, 0, 123, 0, 82, 0, 87, 0, 92, 0, 110, 0, 92, 0, 110, 0, 92, 0, 92, 0, 87, 0, 82, 0, 123, 0, 82, 0,
+    82, 0, 123
+]
 
-STAR_WARS_IMPERIAL_MARCH = [120, 
-    131, 0, 131, 0, 131, 0, 103, 0, 155, 0, 131, 0, 103, 0, 155,
-    0, 131, 0, 196, 0, 196, 0, 196, 0, 207, 0, 155, 0, 123, 0, 103,
-    0, 155, 0, 130, 0, 262, 0, 130, 0, 130, 0, 262, 0, 247, 233,
-    220, 247, 233, 220, 0, 103, 0, 155, 0, 131, 0, 103,
-    0, 155, 0, 131, 131
-    ]
+STAR_WARS_IMPERIAL_MARCH = [
+    120, 131, 0, 131, 0, 131, 0, 103, 0, 155, 0, 131, 0, 103, 0, 155, 0, 131, 0, 196, 0, 196, 0, 196, 0, 207,
+    0, 155, 0, 123, 0, 103, 0, 155, 0, 130, 0, 262, 0, 130, 0, 130, 0, 262, 0, 247, 233, 220, 247, 233, 220, 0,
+    103, 0, 155, 0, 131, 0, 103, 0, 155, 0, 131, 131
+]
 
 MELODY = [PAUSED, NIRVANA_COME_AS_YOU_ARE, STAR_WARS_IMPERIAL_MARCH]
 
-# Initialize variables
+# Initialisation des variables
 state = 0
 previous_button_state = 0
 previous_vol = 0
@@ -56,15 +53,17 @@ prev_set_temp = 0
 i = 0
 temp = 0
 buzz = True
-# Define Button cycle functions
+
+
+# Fonction pour gérer les cycles de bouton
 def button_cycle(button, states_nbr, actual_state):
     """
-    Cycle through states based on button press.
+    Effectue un cycle d'états en fonction de la pression du bouton.
 
-    :param button: Pin object for button
-    :param states_nbr: Number of states to cycle through
-    :param actual_state: Current state
-    :return: New state after button press
+    :param button: Objet Pin pour le bouton
+    :param states_nbr: Nombre d'états à cycler
+    :param actual_state: État actuel
+    :return: Nouvel état après la pression du bouton
     """
     global previous_button_state, state
 
@@ -79,15 +78,17 @@ def button_cycle(button, states_nbr, actual_state):
     previous_button_state = btn_state
     return state
 
+
+# Fonction pour gérer les pressions multiples de bouton
 def button_multi(button, states_nbr, actual_state, delay):
     """
-    Multi-press button state control.
+    Contrôle des états en fonction des pressions multiples sur le bouton.
 
-    :param button: Pin object for button
-    :param states_nbr: Number of states to cycle through
-    :param actual_state: Current state
-    :param delay: Delay in seconds to reset the state
-    :return: New state after button press
+    :param button: Objet Pin pour le bouton
+    :param states_nbr: Nombre d'états à cycler
+    :param actual_state: État actuel
+    :param delay: Délai en secondes pour réinitialiser l'état
+    :return: Nouvel état après la pression du bouton
     """
     global t1, previous_button_state, state
 
@@ -106,18 +107,19 @@ def button_multi(button, states_nbr, actual_state, delay):
     previous_button_state = btn_state
     return state
 
-# Define LED control function
+
+# Fonction de contrôle de la LED
 def led_control_100hz(mode, led, button, freq_list):
     """
-    Control LED blinking at 100Hz frequency based on button input.
+    Contrôle de la LED clignotant à une fréquence de 100Hz en fonction de l'entrée du bouton.
 
-    :param mode: Operation mode ('multi' or 'cycle')
-    :param led: Pin object for LED
-    :param button: Pin object for button
-    :param freq_list: List of frequencies for LED blinking
+    :param mode: Mode d'opération ('multi' ou 'cycle')
+    :param led: Objet Pin pour la LED
+    :param button: Objet Pin pour le bouton
+    :param freq_list: Liste des fréquences pour le clignotement de la LED
     """
     global counter, led_state
-    time.sleep(0.01)  # 100Hz cycle
+    time.sleep(0.01)  # Cycle de 100Hz
     counter = (counter % 100) + 1
     states_nbr = len(freq_list)
     if states_nbr <= 0:
@@ -129,6 +131,7 @@ def led_control_100hz(mode, led, button, freq_list):
         led_state = button_cycle(button, states_nbr, led_state)
     else:
         raise ValueError('Invalid mode value. Must be "multi"/"m" or "cycle"/"c".')
+
     print(led_state)
     freq = freq_list[led_state]
 
@@ -139,16 +142,17 @@ def led_control_100hz(mode, led, button, freq_list):
     else:
         led.value(0)
 
-# Define melody control function
+
+# Fonction pour contrôler la mélodie
 def melody_100hz(melody_matrix, buzzer_pwm, vol_adc, button, led):
     """
-    Play melody at 100Hz frequency based on button input and volume.
+    Joue une mélodie à une fréquence de 100Hz en fonction de l'entrée du bouton et du volume.
 
-    :param melody_matrix: List of melodies to play
-    :param buzzer_pwm: PWM object for buzzer
-    :param vol_adc: ADC object for volume control
-    :param button: Pin object for button
-    :param led: Pin object for LED
+    :param melody_matrix: Liste des mélodies à jouer
+    :param buzzer_pwm: Objet PWM pour le buzzer
+    :param vol_adc: Objet ADC pour le contrôle du volume
+    :param button: Objet Pin pour le bouton
+    :param led: Objet Pin pour la LED
     """
     global counter, previous_vol, prev_mel_state, i, mel_state
     time.sleep(0.01)
@@ -157,7 +161,7 @@ def melody_100hz(melody_matrix, buzzer_pwm, vol_adc, button, led):
     melodies_nbr = len(melody_matrix)
     vol = int((vol_adc.read_u16() / 65535) * 100)
 
-    # Print volume if it changes by more than 5
+    # Affichage du volume s'il change de plus de 5
     if abs(vol - previous_vol) > 5:
         print(vol)
         previous_vol = vol
@@ -191,13 +195,14 @@ def melody_100hz(melody_matrix, buzzer_pwm, vol_adc, button, led):
 
 
 def temp_control():
-    
+    """
+    Contrôle de la température, avec ajustement de l'éclairage et de l'alarme selon la température.
+    """
     global prev_temp, start, temp, i, start_read, start_alarm1, start_alarm2, buzz
-    
-    
+
     pot = POT.read_u16()
     set_temp = 15 + float((pot / 65535) * 20)
-    
+
     if time.ticks_diff(time.ticks_ms(), start_read) > 1000:
         temp = dht.readTemperature()
         print(temp)
@@ -208,44 +213,47 @@ def temp_control():
             PWM1.duty_u16(0)
             lcd.print(f"Set: {str(set_temp):.4}")
             lcd.setCursor(0, 1)
-            lcd.print("Ambient: "+str(temp))
+            lcd.print("Ambient: " + str(temp))
 
         if temp > set_temp and temp - set_temp < 3:
             LED.value(not LED.value())
         elif temp < set_temp:
             LED.value(0)
         start_read = time.ticks_ms()
-    
-    if temp - set_temp > 3:
 
+    if temp - set_temp > 3:
         PWM1.freq(500)
         time.sleep(0.1)
         PWM1.freq(1000)
         time.sleep(0.1)
         PWM1.freq(1500)
         time.sleep(0.1)
-        
-        if time.ticks_diff(time.ticks_ms(), start_alarm1)>500:
+
+        if time.ticks_diff(time.ticks_ms(), start_alarm1) > 500:
             LED.value(not LED.value())
             buzz = not buzz
             if buzz:
                 PWM1.duty_u16(3000)
             else:
                 PWM1.duty_u16(0)
-            i = (i+1) % 21
+            i = (i + 1) % 21
             lcd.setCursor(0, 0)
             lcd.clear()
             alarm_str = "                ALARM"
             lcd.print(alarm_str[i:])
             start_alarm1 = time.ticks_ms()
+
         if time.ticks_diff(time.ticks_ms(), start_alarm2) > 1500:
             lcd.setCursor(0, 1)
             lcd.print("ALARM")
             start_alarm2 = time.ticks_ms()
 
+
+# Initialisation des timestamps pour la lecture de température et des alarmes
 start_read = time.ticks_ms()
 start_alarm1 = time.ticks_ms()
 start_alarm2 = time.ticks_ms()
+
 while True:
     # led_control_100hz("m", LED, B1, FREQ_LED)
     # melody_100hz(MELODY, PWM1, POT, B1, LED)
